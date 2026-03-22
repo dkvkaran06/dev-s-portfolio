@@ -1416,9 +1416,7 @@
   const contactStatus = document.getElementById('contactStatus');
   const emailFallbackLink = document.getElementById('emailFallbackLink');
   const CONTACT_EMAIL = 'dkvkaran2004@gmail.com';
-  const FORM_ENDPOINT = window.location.hostname === 'localhost'
-    ? `https://formsubmit.co/ajax/${CONTACT_EMAIL}`
-    : '/api/contact';
+  const FORM_ENDPOINT = `https://formsubmit.co/ajax/${CONTACT_EMAIL}`;
 
   const setContactStatus = (message, type = 'info') => {
     if (!contactStatus) {
