@@ -480,6 +480,7 @@
     line-height: 1.5;
     display: -webkit-box;
     -webkit-line-clamp: 5;
+    line-clamp: 5;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -1359,11 +1360,11 @@
   <div class="contact-box">
     <h2 class="section-title"><span class="title-bracket">&lt;</span> Let's Connect <span class="title-bracket">/&gt;</span></h2>
     <p class="contact-sub">Have a project in mind or just want to say hi? Drop me a message at <span style="color:var(--cyan)">dkvkaran2004@gmail.com</span> or fill the form below.</p>
-    <form id="contactForm">
+    <form id="contactForm" novalidate>
       <div class="contact-grid">
-        <input id="contactName" class="contact-input" type="text" placeholder="Your Name" required />
-        <input id="contactEmail" class="contact-input" type="email" placeholder="Your Email" required />
-        <textarea id="contactMessage" class="contact-input" placeholder="Your Message" required></textarea>
+        <input id="contactName" class="contact-input" type="text" name="name" autocomplete="name" placeholder="Your Name" required />
+        <input id="contactEmail" class="contact-input" type="email" name="email" autocomplete="email" placeholder="Your Email" required />
+        <textarea id="contactMessage" class="contact-input" name="message" placeholder="Your Message" required></textarea>
       </div>
       <button class="btn-send" type="submit">Send Message →</button>
       <p id="contactStatus" class="contact-status" aria-live="polite"></p>
@@ -1414,9 +1415,10 @@
   const sendButton = document.querySelector('#contactForm .btn-send');
   const contactStatus = document.getElementById('contactStatus');
   const emailFallbackLink = document.getElementById('emailFallbackLink');
-  const RATE_LIMIT_STORAGE_KEY = 'contactRateLimitUntil';
-  const DEFAULT_COOLDOWN_MS = 60 * 1000;
   const CONTACT_EMAIL = 'dkvkaran2004@gmail.com';
+  const FORM_ENDPOINT = window.location.hostname === 'localhost'
+    ? `https://formsubmit.co/ajax/${CONTACT_EMAIL}`
+    : '/api/contact';
 
   const setContactStatus = (message, type = 'info') => {
     if (!contactStatus) {
@@ -1444,7 +1446,7 @@
   };
 
   if (contactForm && contactName && contactEmail && contactMessage) {
-    contactForm.addEventListener('submit', (e) => {
+    contactForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const name = contactName.value.trim();
@@ -1452,34 +1454,54 @@
       const message = contactMessage.value.trim();
 
       if (!name || !email || !message) {
+        setContactStatus('Please fill in all fields.', 'error');
+        showEmailFallback(name || 'Portfolio Visitor', email, message);
         return;
       }
+
+      if (!contactEmail.checkValidity()) {
+        setContactStatus('Please enter a valid email address.', 'error');
+        return;
+      }
+
       hideEmailFallback();
+      setContactStatus('Sending your message...', 'info');
 
       if (sendButton) {
         sendButton.disabled = true;
         sendButton.textContent = 'Sending...';
       }
 
-      // Fire-and-forget API attempt; UI always confirms success.
-      fetch('https://formsubmit.co/ajax/dkvkaran2004@gmail.com', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          name,
-          email,
-          message,
-          _subject: `Portfolio Contact from ${name}`,
-          _captcha: 'false'
-        })
-      }).catch(() => {});
+      try {
+        const response = await fetch(FORM_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            message,
+            _subject: `Portfolio Contact from ${name}`,
+            _captcha: 'false',
+            _template: 'table'
+          })
+        });
 
-      setContactStatus('Message sent successfully.', 'success');
-      contactForm.reset();
-      localStorage.removeItem(RATE_LIMIT_STORAGE_KEY);
+        const payload = await response.json().catch(() => ({}));
+        const delivered = response.ok && (payload.success === true || payload.success === 'true');
+
+        if (!delivered) {
+          throw new Error(payload.message || 'Unable to send message right now.');
+        }
+
+        setContactStatus('Message sent successfully.', 'success');
+        contactForm.reset();
+      } catch (error) {
+        setContactStatus('Could not send right now. Please use the email app link below.', 'error');
+        showEmailFallback(name, email, message);
+      }
 
       if (sendButton) {
         sendButton.disabled = false;
