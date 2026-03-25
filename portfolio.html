@@ -430,48 +430,9 @@
   #projects .projects-slider {
     margin-top: 1rem;
   }
-  #projects .slider-btn {
-    width: 38px;
-    height: 38px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: rgba(0,212,255,0.08);
-    color: var(--cyan);
-    font-size: 1.1rem;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all .22s;
-  }
-  #projects .slider-btn:hover:not(:disabled) {
-    border-color: var(--cyan);
-    box-shadow: 0 0 20px rgba(0,212,255,0.22);
-    transform: translateY(-1px);
-  }
-  #projects .slider-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
   #projects .projects-slider-viewport {
     overflow: hidden;
     position: relative;
-    padding-right: 56px;
-  }
-  #projects .slider-btn.slider-next-floating {
-    position: absolute;
-    top: 50%;
-    right: 10px;
-    transform: translateY(-50%);
-    z-index: 2;
-  }
-  #projects .slider-btn.slider-prev-floating {
-    position: absolute;
-    top: 50%;
-    left: 10px;
-    transform: translateY(-50%);
-    z-index: 2;
   }
   #projects .projects-grid {
     display: flex;
@@ -560,9 +521,6 @@
     }
   }
   @media (max-width: 640px) {
-    #projects .projects-slider-viewport {
-      padding-right: 48px;
-    }
     #projects .projects-grid .project-card {
       flex-basis: 100%;
     }
@@ -1209,8 +1167,6 @@
 
   <div class="projects-slider" data-project-slider>
     <div class="projects-slider-viewport">
-      <button type="button" class="slider-btn slider-prev-floating" data-project-prev aria-label="Previous project">&#8249;</button>
-      <button type="button" class="slider-btn slider-next-floating" data-project-next aria-label="Next project">&#8250;</button>
       <div class="projects-grid" data-project-track>
     <div class="project-card">
       <div class="project-thumb">
@@ -1630,10 +1586,10 @@
   // Projects slider
   const slider = document.querySelector('[data-project-slider]');
   const track = slider?.querySelector('[data-project-track]');
-  const prevBtn = slider?.querySelector('[data-project-prev]');
-  const nextBtn = slider?.querySelector('[data-project-next]');
+  const viewport = slider?.querySelector('.projects-slider-viewport');
   const cards = track ? Array.from(track.querySelectorAll('.project-card')) : [];
   let currentIndex = 0;
+  let wheelLocked = false;
 
   const getGap = () => {
     if (!track) return 0;
@@ -1651,6 +1607,21 @@
 
   const getMaxIndex = () => Math.max(0, cards.length - getVisibleCount());
 
+  const moveSlider = (direction) => {
+    const maxIndex = getMaxIndex();
+    if (direction > 0 && currentIndex < maxIndex) {
+      currentIndex += 1;
+      updateSlider();
+      return true;
+    }
+    if (direction < 0 && currentIndex > 0) {
+      currentIndex -= 1;
+      updateSlider();
+      return true;
+    }
+    return false;
+  };
+
   const updateSlider = () => {
     if (!track || cards.length === 0) return;
     const cardWidth = cards[0].getBoundingClientRect().width;
@@ -1658,20 +1629,27 @@
     const maxIndex = getMaxIndex();
     currentIndex = Math.max(0, Math.min(currentIndex, maxIndex));
     track.style.transform = `translateX(${-currentIndex * step}px)`;
-    if (prevBtn) prevBtn.disabled = currentIndex === 0;
-    if (nextBtn) nextBtn.disabled = currentIndex === maxIndex;
   };
 
   if (slider && track && cards.length > 0) {
-    prevBtn?.addEventListener('click', () => {
-      currentIndex -= 1;
-      updateSlider();
-    });
+    viewport?.addEventListener('wheel', (event) => {
+      const axisValue = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      if (Math.abs(axisValue) < 8) return;
 
-    nextBtn?.addEventListener('click', () => {
-      currentIndex += 1;
-      updateSlider();
-    });
+      if (wheelLocked) {
+        event.preventDefault();
+        return;
+      }
+
+      const moved = axisValue > 0 ? moveSlider(1) : moveSlider(-1);
+      if (moved) {
+        event.preventDefault();
+        wheelLocked = true;
+        window.setTimeout(() => {
+          wheelLocked = false;
+        }, 320);
+      }
+    }, { passive: false });
 
     window.addEventListener('resize', updateSlider);
     updateSlider();
