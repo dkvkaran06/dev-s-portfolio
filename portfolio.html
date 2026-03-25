@@ -427,8 +427,61 @@
   }
 
   /* ---- PROJECTS ---- */
+  #projects .projects-slider {
+    margin-top: 1rem;
+  }
+  #projects .slider-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(0,212,255,0.08);
+    color: var(--cyan);
+    font-size: 1.1rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all .22s;
+  }
+  #projects .slider-btn:hover:not(:disabled) {
+    border-color: var(--cyan);
+    box-shadow: 0 0 20px rgba(0,212,255,0.22);
+    transform: translateY(-1px);
+  }
+  #projects .slider-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  #projects .projects-slider-viewport {
+    overflow: hidden;
+    position: relative;
+    padding-right: 56px;
+  }
+  #projects .slider-btn.slider-next-floating {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    z-index: 2;
+  }
+  #projects .slider-btn.slider-prev-floating {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    transform: translateY(-50%);
+    z-index: 2;
+  }
   #projects .projects-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.1rem;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 1.1rem;
+    transition: transform .45s ease;
+    will-change: transform;
+  }
+  #projects .projects-grid .project-card {
+    flex: 0 0 calc((100% - 2.2rem) / 3);
   }
   .project-card {
     background: var(--card);
@@ -500,6 +553,20 @@
     transition: color .2s;
   }
   .project-link:hover { color: var(--cyan); }
+
+  @media (max-width: 980px) {
+    #projects .projects-grid .project-card {
+      flex-basis: calc((100% - 1.1rem) / 2);
+    }
+  }
+  @media (max-width: 640px) {
+    #projects .projects-slider-viewport {
+      padding-right: 48px;
+    }
+    #projects .projects-grid .project-card {
+      flex-basis: 100%;
+    }
+  }
 
   /* ---- EXPERIENCE ---- */
   #experience .timeline {
@@ -1109,12 +1176,12 @@
       <div class="timeline-card">
         <div class="timeline-head">
           <div>
-            <div class="timeline-role">Data Analyst Intern</div>
-            <div class="timeline-company">Near to College — On-site</div>
+            <div class="timeline-role">DSA Training — Java</div>
+            <div class="timeline-company">Cipher Schools (Edtech Company)</div>
           </div>
-          <div class="timeline-date">Feb '25 – May '25</div>
+          <div class="timeline-date">Jun '25 – Jul '25</div>
         </div>
-        <div class="timeline-desc">Collected, cleaned and analyzed event ticket sales and booking data to uncover customer behavior patterns and sales trends. Created interactive dashboards using Excel and Tableau to monitor daily ticket sales, top-selling events, and peak booking hours.</div>
+        <div class="timeline-desc">Gained hands-on experience with core Data Structures & Algorithms concepts including arrays, linked lists, stacks, queues, trees, graphs, sorting & searching algorithms, and time-space complexity analysis using Java.</div>
       </div>
     </div>
     <div class="timeline-item">
@@ -1122,12 +1189,12 @@
       <div class="timeline-card">
         <div class="timeline-head">
           <div>
-            <div class="timeline-role">DSA Training — Java</div>
-            <div class="timeline-company">Cipher Schools (Edtech Company)</div>
+            <div class="timeline-role">Data Analyst Intern</div>
+            <div class="timeline-company">Near to College — On-site</div>
           </div>
-          <div class="timeline-date">Jun '25 – Jul '25</div>
+          <div class="timeline-date">Feb '25 – May '25</div>
         </div>
-        <div class="timeline-desc">Gained hands-on experience with core Data Structures & Algorithms concepts including arrays, linked lists, stacks, queues, trees, graphs, sorting & searching algorithms, and time-space complexity analysis using Java.</div>
+        <div class="timeline-desc">Collected, cleaned and analyzed event ticket sales and booking data to uncover customer behavior patterns and sales trends. Created interactive dashboards using Excel and Tableau to monitor daily ticket sales, top-selling events, and peak booking hours.</div>
       </div>
     </div>
   </div>
@@ -1140,7 +1207,11 @@
   <h2 class="section-title"><span class="title-bracket">&lt;</span> Featured Projects <span class="title-bracket">/&gt;</span></h2>
   <p class="section-sub">A selection of projects that reflect my passion for data and development.</p>
 
-  <div class="projects-grid">
+  <div class="projects-slider" data-project-slider>
+    <div class="projects-slider-viewport">
+      <button type="button" class="slider-btn slider-prev-floating" data-project-prev aria-label="Previous project">&#8249;</button>
+      <button type="button" class="slider-btn slider-next-floating" data-project-next aria-label="Next project">&#8250;</button>
+      <div class="projects-grid" data-project-track>
     <div class="project-card">
       <div class="project-thumb">
         <img src="screenshot-2026-03-18.png" alt="Superstore dashboard thumbnail" onerror="this.onerror=null;this.src='https://placehold.co/1200x675/102136/00d4ff?text=Superstore+Dashboard+Thumbnail';" />
@@ -1214,6 +1285,8 @@
       </div>
     </div>
 
+      </div>
+    </div>
   </div>
 </section>
 
@@ -1553,6 +1626,56 @@
     el.style.transition = 'opacity 0.5s ease, transform 0.5s ease, border-color 0.25s, box-shadow 0.25s';
     observer.observe(el);
   });
+
+  // Projects slider
+  const slider = document.querySelector('[data-project-slider]');
+  const track = slider?.querySelector('[data-project-track]');
+  const prevBtn = slider?.querySelector('[data-project-prev]');
+  const nextBtn = slider?.querySelector('[data-project-next]');
+  const cards = track ? Array.from(track.querySelectorAll('.project-card')) : [];
+  let currentIndex = 0;
+
+  const getGap = () => {
+    if (!track) return 0;
+    const gap = parseFloat(window.getComputedStyle(track).gap);
+    return Number.isNaN(gap) ? 0 : gap;
+  };
+
+  const getVisibleCount = () => {
+    if (!track || cards.length === 0) return 1;
+    const cardWidth = cards[0].getBoundingClientRect().width;
+    if (!cardWidth) return 1;
+    const totalVisible = Math.round((track.parentElement.clientWidth + getGap()) / (cardWidth + getGap()));
+    return Math.max(1, totalVisible);
+  };
+
+  const getMaxIndex = () => Math.max(0, cards.length - getVisibleCount());
+
+  const updateSlider = () => {
+    if (!track || cards.length === 0) return;
+    const cardWidth = cards[0].getBoundingClientRect().width;
+    const step = cardWidth + getGap();
+    const maxIndex = getMaxIndex();
+    currentIndex = Math.max(0, Math.min(currentIndex, maxIndex));
+    track.style.transform = `translateX(${-currentIndex * step}px)`;
+    if (prevBtn) prevBtn.disabled = currentIndex === 0;
+    if (nextBtn) nextBtn.disabled = currentIndex === maxIndex;
+  };
+
+  if (slider && track && cards.length > 0) {
+    prevBtn?.addEventListener('click', () => {
+      currentIndex -= 1;
+      updateSlider();
+    });
+
+    nextBtn?.addEventListener('click', () => {
+      currentIndex += 1;
+      updateSlider();
+    });
+
+    window.addEventListener('resize', updateSlider);
+    updateSlider();
+  }
 </script>
 </body>
 </html>
